@@ -23,9 +23,31 @@
             font-size: 24px;
             font-weight: bold;
         }
-        #dialogue {
-            margin: 20px;
-            font-size: 20px;
+        #dialogue-container {
+            margin: 20px auto;
+            width: 90%;
+            max-width: 500px;
+            text-align: left;
+        }
+        .dialogue {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .avatar-dialogue {
+            background-color: #e0f7fa;
+            color: #00796b;
+            text-align: left;
+        }
+        .user-dialogue {
+            background-color: #fff9c4;
+            color: #f57f17;
+            text-align: right;
+        }
+        .highlight {
+            font-weight: bold;
+            background-color: #d1c4e9;
         }
         button {
             padding: 10px 20px;
@@ -46,7 +68,9 @@
 </head>
 <body>
     <div id="avatar">😊</div>
-    <div id="dialogue">Welcome! Let's start practicing.</div>
+    <div id="dialogue-container">
+        <div id="dialogue" class="dialogue avatar-dialogue">Welcome! Let's start practicing.</div>
+    </div>
     <div id="controls">
         <button id="startBtn" onclick="startDialogue()">Start</button>
         <button id="playBtn" onclick="playRecording()" disabled>Play Recording</button>
@@ -76,12 +100,36 @@
             currentDialogue = 0;
             recording = [];
             recordedChunks = [];
-            document.getElementById('dialogue').textContent = dialogues[currentDialogue];
+            document.getElementById('dialogue-container').innerHTML = '';
+            addAvatarDialogue(dialogues[currentDialogue]);
             startRecording();
             speak(dialogues[currentDialogue]);
         }
 
+        function addAvatarDialogue(text) {
+            const dialogueContainer = document.getElementById('dialogue-container');
+            const dialogue = document.createElement('div');
+            dialogue.classList.add('dialogue', 'avatar-dialogue', 'highlight');
+            dialogue.textContent = text;
+            dialogueContainer.appendChild(dialogue);
+        }
+
+        function addUserDialogue(text) {
+            const dialogueContainer = document.getElementById('dialogue-container');
+            const dialogue = document.createElement('div');
+            dialogue.classList.add('dialogue', 'user-dialogue', 'highlight');
+            dialogue.textContent = text;
+            dialogueContainer.appendChild(dialogue);
+        }
+
+        function clearHighlights() {
+            const highlighted = document.querySelectorAll('.highlight');
+            highlighted.forEach(elem => elem.classList.remove('highlight'));
+        }
+
         function speak(text) {
+            clearHighlights();
+            addAvatarDialogue(text);
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.onend = () => startRecognition();
             speechSynthesis.speak(utterance);
@@ -94,24 +142,28 @@
 
             recognition.onresult = (event) => {
                 const userSpeech = event.results[0][0].transcript;
-                document.getElementById('dialogue').textContent = userSpeech;
+                clearHighlights();
+                addUserDialogue(userSpeech);
 
                 recording.push({ avatar: dialogues[currentDialogue], user: userSpeech });
 
                 if (currentDialogue < dialogues.length - 1) {
                     currentDialogue++;
-                    document.getElementById('dialogue').textContent = dialogues[currentDialogue];
                     speak(dialogues[currentDialogue]);
                 } else {
                     stopRecording();
                     document.getElementById('playBtn').disabled = false;
                     document.getElementById('downloadBtn').disabled = false;
-                    document.getElementById('dialogue').textContent = "Conversation complete! You can now play or download the recording.";
+                    addAvatarDialogue("Conversation complete! You can now play or download the recording.");
                 }
             };
 
             recognition.onerror = () => {
-                document.getElementById('dialogue').textContent = "Sorry, I didn't catch that. Please try again.";
+                const dialogueContainer = document.getElementById('dialogue-container');
+                const errorDialogue = document.createElement('div');
+                errorDialogue.classList.add('dialogue', 'avatar-dialogue', 'highlight');
+                errorDialogue.textContent = "Sorry, I didn't catch that. Please try again.";
+                dialogueContainer.appendChild(errorDialogue);
                 startRecognition();
             };
         }
