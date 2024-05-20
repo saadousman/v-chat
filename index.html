@@ -1,203 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spoken English App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-            background-color: #f0f8ff;
-        }
-        #avatar {
-            width: 100px;
-            height: 100px;
-            background-color: lightblue;
-            border-radius: 50%;
-            margin: 20px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        #dialogue-container {
-            margin: 20px auto;
-            width: 90%;
-            max-width: 500px;
-            text-align: left;
-        }
-        .dialogue {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .avatar-dialogue {
-            background-color: #e0f7fa;
-            color: #00796b;
-            text-align: left;
-        }
-        .user-dialogue {
-            background-color: #fff9c4;
-            color: #f57f17;
-            text-align: right;
-        }
-        .highlight {
-            font-weight: bold;
-            background-color: #d1c4e9;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #controls {
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spoken English App</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .dialog-box {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .dialog-app {
+      background-color: #f8f9fa;
+    }
+    .dialog-me {
+      background-color: #e9ecef;
+    }
+  </style>
 </head>
 <body>
-    <div id="avatar">😊</div>
-    <div id="dialogue-container">
-        <div id="dialogue" class="dialogue avatar-dialogue">Welcome! Let's start practicing.</div>
+  <div class="container mt-5">
+    <h1 class="text-center">Spoken English App</h1>
+    <div class="text-center mt-4">
+      <button id="startConversation" class="btn btn-primary">Start Conversation</button>
+      <button id="endConversation" class="btn btn-danger" onclick="endConversation()">End Conversation</button>
     </div>
-    <div id="controls">
-        <button id="startBtn" onclick="startDialogue()">Start</button>
-        <button id="playBtn" onclick="playRecording()" disabled>Play Recording</button>
-        <button id="downloadBtn" onclick="downloadRecording()" disabled>Download Recording</button>
+    <div id="dialogContainer" class="dialog-box mt-4">
+      <!-- Dialog will appear here -->
     </div>
+  </div>
 
-    <script>
-        const dialogues = [
-            "Hello! How are you?",
-            "I'm fine, thank you. How about you?",
-            "I'm doing great! What's your name?",
-            "My name is John. What's yours?",
-            "Nice to meet you, John. My name is Sarah.",
-            "What do you do for a living, Sarah?",
-            "I'm a teacher. How about you?",
-            "I'm an engineer.",
-            "That's interesting! What do you like to do in your free time?",
-            "I enjoy reading and hiking. How about you?"
-        ];
+  <script>
+    document.getElementById('startConversation').addEventListener('click', startConversation);
 
-        let currentDialogue = 0;
-        let recording = [];
-        let mediaRecorder;
-        let recordedChunks = [];
+    const dialogScript = [
+      { app: "Hello! How are you today?", me: "I am fine, thank you." },
+      { app: "What is your name?", me: "My name is John." },
+      // Add more dialog lines as needed
+    ];
 
-        function startDialogue() {
-            currentDialogue = 0;
-            recording = [];
-            recordedChunks = [];
-            document.getElementById('dialogue-container').innerHTML = '';
-            addAvatarDialogue(dialogues[currentDialogue]);
-            startRecording();
-            speak(dialogues[currentDialogue]);
+    let currentStep = 0;
+    let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    let synth = window.speechSynthesis;
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = function (event) {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
         }
+      };
 
-        function addAvatarDialogue(text) {
-            const dialogueContainer = document.getElementById('dialogue-container');
-            const dialogue = document.createElement('div');
-            dialogue.classList.add('dialogue', 'avatar-dialogue', 'highlight');
-            dialogue.textContent = text;
-            dialogueContainer.appendChild(dialogue);
+      mediaRecorder.onstop = function () {
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'conversation.webm';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      };
+    });
+
+    function startConversation() {
+      mediaRecorder.start();
+      if (currentStep < dialogScript.length) {
+        showDialog('app', dialogScript[currentStep].app);
+        speakText(dialogScript[currentStep].app, promptUserToSpeak);
+      }
+    }
+
+    function showDialog(role, text) {
+      const dialogContainer = document.getElementById('dialogContainer');
+      const dialogDiv = document.createElement('div');
+      dialogDiv.className = `dialog-${role}`;
+      dialogDiv.innerHTML = `<strong>${role === 'app' ? 'App' : 'Me'}:</strong> ${text}`;
+      dialogContainer.appendChild(dialogDiv);
+    }
+
+    function speakText(text, callback) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = function () {
+        if (callback) callback();
+      };
+      synth.speak(utterance);
+    }
+
+    function promptUserToSpeak() {
+      const dialogContainer = document.getElementById('dialogContainer');
+      const promptDiv = document.createElement('div');
+      promptDiv.className = 'alert alert-info mt-2';
+      promptDiv.innerHTML = 'It\'s your turn to speak.';
+
+      dialogContainer.appendChild(promptDiv);
+
+      recognition.start();
+
+      recognition.onresult = function (event) {
+        const userSpeech = event.results[0][0].transcript;
+        showDialog('me', userSpeech);
+        recognition.stop();
+        dialogContainer.removeChild(promptDiv);
+
+        // Move to the next step
+        currentStep++;
+        if (currentStep < dialogScript.length) {
+          speakText(dialogScript[currentStep].app, promptUserToSpeak);
+        } else {
+          // Conversation ended
+          alert('Conversation ended!');
         }
+      };
 
-        function addUserDialogue(text) {
-            const dialogueContainer = document.getElementById('dialogue-container');
-            const dialogue = document.createElement('div');
-            dialogue.classList.add('dialogue', 'user-dialogue', 'highlight');
-            dialogue.textContent = text;
-            dialogueContainer.appendChild(dialogue);
-        }
+      recognition.onerror = function () {
+        recognition.stop();
+      };
+    }
 
-        function clearHighlights() {
-            const highlighted = document.querySelectorAll('.highlight');
-            highlighted.forEach(elem => elem.classList.remove('highlight'));
-        }
-
-        function speak(text) {
-            clearHighlights();
-            addAvatarDialogue(text);
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => startRecognition();
-            speechSynthesis.speak(utterance);
-        }
-
-        function startRecognition() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            recognition.start();
-
-            recognition.onresult = (event) => {
-                const userSpeech = event.results[0][0].transcript;
-                clearHighlights();
-                addUserDialogue(userSpeech);
-
-                recording.push({ avatar: dialogues[currentDialogue], user: userSpeech });
-
-                if (currentDialogue < dialogues.length - 1) {
-                    currentDialogue++;
-                    speak(dialogues[currentDialogue]);
-                } else {
-                    stopRecording();
-                    document.getElementById('playBtn').disabled = false;
-                    document.getElementById('downloadBtn').disabled = false;
-                    addAvatarDialogue("Conversation complete! You can now play or download the recording.");
-                }
-            };
-
-            recognition.onerror = () => {
-                const dialogueContainer = document.getElementById('dialogue-container');
-                const errorDialogue = document.createElement('div');
-                errorDialogue.classList.add('dialogue', 'avatar-dialogue', 'highlight');
-                errorDialogue.textContent = "Sorry, I didn't catch that. Please try again.";
-                dialogueContainer.appendChild(errorDialogue);
-                startRecognition();
-            };
-        }
-
-        function startRecording() {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
-                mediaRecorder.start();
-            });
-        }
-
-        function stopRecording() {
-            mediaRecorder.stop();
-        }
-
-        function playRecording() {
-            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            audio.play();
-        }
-
-        function downloadRecording() {
-            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = audioUrl;
-            a.download = 'conversation.webm';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-    </script>
+    function endConversation() {
+      mediaRecorder.stop();
+      alert('Conversation recorded and ready to download.');
+    }
+  </script>
 </body>
 </html>
