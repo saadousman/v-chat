@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spoken English App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f0f8ff;
+        }
+        #avatar {
+            width: 100px;
+            height: 100px;
+            background-color: lightblue;
+            border-radius: 50%;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #dialogue {
+            margin: 20px;
+            font-size: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="avatar">😊</div>
+    <div id="dialogue">Welcome! Let's start practicing.</div>
+    <div id="controls">
+        <button id="startBtn" onclick="startDialogue()">Start</button>
+        <button id="playBtn" onclick="playRecording()" disabled>Play Recording</button>
+        <button id="downloadBtn" onclick="downloadRecording()" disabled>Download Recording</button>
+    </div>
+
+    <script>
+        const dialogues = [
+            "Hello! How are you?",
+            "I'm fine, thank you. How about you?",
+            "I'm doing great! What's your name?",
+            "My name is John. What's yours?",
+            "Nice to meet you, John. My name is Sarah.",
+            "What do you do for a living, Sarah?",
+            "I'm a teacher. How about you?",
+            "I'm an engineer.",
+            "That's interesting! What do you like to do in your free time?",
+            "I enjoy reading and hiking. How about you?"
+        ];
+
+        let currentDialogue = 0;
+        let recording = [];
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        function startDialogue() {
+            currentDialogue = 0;
+            recording = [];
+            recordedChunks = [];
+            document.getElementById('dialogue').textContent = dialogues[currentDialogue];
+            startRecording();
+            speak(dialogues[currentDialogue]);
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => startRecognition();
+            speechSynthesis.speak(utterance);
+        }
+
+        function startRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const userSpeech = event.results[0][0].transcript;
+                document.getElementById('dialogue').textContent = userSpeech;
+
+                recording.push({ avatar: dialogues[currentDialogue], user: userSpeech });
+
+                if (currentDialogue < dialogues.length - 1) {
+                    currentDialogue++;
+                    document.getElementById('dialogue').textContent = dialogues[currentDialogue];
+                    speak(dialogues[currentDialogue]);
+                } else {
+                    stopRecording();
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('dialogue').textContent = "Conversation complete! You can now play or download the recording.";
+                }
+            };
+
+            recognition.onerror = () => {
+                document.getElementById('dialogue').textContent = "Sorry, I didn't catch that. Please try again.";
+                startRecognition();
+            };
+        }
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
+                mediaRecorder.start();
+            });
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+        }
+
+        function playRecording() {
+            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+        }
+
+        function downloadRecording() {
+            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = audioUrl;
+            a.download = 'conversation.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
